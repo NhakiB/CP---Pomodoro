@@ -3,12 +3,12 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const App = () => {
 
-  const tempoInicialTrabalho = 5 * 60;
-  const tempoInicialDescanso = 1 * 60;
+  const tempoInicialTrabalho = 5;
+  const tempoInicialDescanso = 1;
 
   const [tempoTrabalho, setTempoTrabalho] = useState(tempoInicialTrabalho);
   const [tempoDescanso, setTempoDescanso] = useState(tempoInicialDescanso);
-  const [tempoAtual, setTempoAtual] = useState(tempoTrabalho);
+  const [tempoAtual, setTempoAtual] = useState(tempoTrabalho * 60);
   const [timerAtivo, setTimerAtivo] = useState(false);
   const [emTrabalho, setEmTrabalho] = useState(true);
 
@@ -18,14 +18,17 @@ const App = () => {
     if (timerAtivo) {
       intervalo = setInterval(() => {
         setTempoAtual((tempoAtual) => {
-          if (tempoAtual - 1 <= 0) {
+          const novoTempo = tempoAtual - 1;
+          if (novoTempo <= 0) {
             clearInterval(intervalo);
             setEmTrabalho(!emTrabalho);
-            return emTrabalho ? tempoDescanso : tempoTrabalho;
+            return emTrabalho ? tempoDescanso * 60 : tempoTrabalho * 60;
           }
-          return tempoAtual - 1;
+          return novoTempo;
         });
       }, 1000);
+    } else {
+      clearInterval(intervalo);
     }
 
     return () => clearInterval(intervalo);
@@ -34,13 +37,13 @@ const App = () => {
   const mudarTempo = (minutos, tipo) => {
     if (!timerAtivo) {
       if (tipo === 'trabalho') {
-        const novoTempo = tempoTrabalho + minutos * 60;
+        const novoTempo = Math.max(tempoTrabalho + minutos, 1);
         setTempoTrabalho(novoTempo);
-        if (emTrabalho) setTempoAtual(novoTempo);
+        if (emTrabalho) setTempoAtual(novoTempo * 60);
       } else {
-        const novoTempo = tempoDescanso + minutos * 60;
+        const novoTempo = Math.max(tempoDescanso + minutos, 1);
         setTempoDescanso(novoTempo);
-        if (!emTrabalho) setTempoAtual(novoTempo);
+        if (!emTrabalho) setTempoAtual(novoTempo * 60);
       }
     }
   };
@@ -76,7 +79,7 @@ const App = () => {
           style={styles.botao}
           onPress={() => {
             setTimerAtivo(false);
-            setTempoAtual(emTrabalho ? tempoTrabalho : tempoDescanso);
+            setTempoAtual(emTrabalho ? tempoTrabalho * 60 : tempoDescanso * 60);
           }}
         >
           <Text style={styles.botaoTexto}>Reiniciar</Text>
@@ -86,38 +89,44 @@ const App = () => {
       <View style={styles.configuracao}>
         <View style={styles.configuracaoBloco}>
           <Text style={styles.configuracaoTitulo}>Trabalho</Text>
-          <TouchableOpacity
-            style={styles.botaoConfiguracao}
-            onPress={() => mudarTempo(1, 'trabalho')}
-            disabled={emTrabalho && timerAtivo}
-          >
-            <Text style={styles.configuracaoBotaoTexto}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.botaoConfiguracao}
-            onPress={() => mudarTempo(-1, 'trabalho')}
-            disabled={emTrabalho && timerAtivo || tempoTrabalho <= 60}
-          >
-            <Text style={styles.configuracaoBotaoTexto}>-</Text>
-          </TouchableOpacity>
+          <View style={styles.configuracaoBotoes}>
+            <TouchableOpacity
+              style={styles.botaoConfiguracao}
+              onPress={() => mudarTempo(1, 'trabalho')}
+              disabled={emTrabalho && timerAtivo}
+            >
+              <Text style={styles.configuracaoBotaoTexto}>+</Text>
+            </TouchableOpacity>
+            <Text style={styles.configuracaoValor}>{tempoTrabalho}</Text>
+            <TouchableOpacity
+              style={styles.botaoConfiguracao}
+              onPress={() => mudarTempo(-1, 'trabalho')}
+              disabled={emTrabalho && timerAtivo || tempoTrabalho <= 1}
+            >
+              <Text style={styles.configuracaoBotaoTexto}>-</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.configuracaoBloco}>
           <Text style={styles.configuracaoTitulo}>Descanso</Text>
-          <TouchableOpacity
-            style={styles.botaoConfiguracao}
-            onPress={() => mudarTempo(1, 'descanso')}
-            disabled={!emTrabalho && timerAtivo}
-          >
-            <Text style={styles.configuracaoBotaoTexto}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.botaoConfiguracao}
-            onPress={() => mudarTempo(-1, 'descanso')}
-            disabled={!emTrabalho && timerAtivo || tempoDescanso <= 60}
-          >
-            <Text style={styles.configuracaoBotaoTexto}>-</Text>
-          </TouchableOpacity>
+          <View style={styles.configuracaoBotoes}>
+            <TouchableOpacity
+              style={styles.botaoConfiguracao}
+              onPress={() => mudarTempo(1, 'descanso')}
+              disabled={!emTrabalho && timerAtivo}
+            >
+              <Text style={styles.configuracaoBotaoTexto}>+</Text>
+            </TouchableOpacity>
+            <Text style={styles.configuracaoValor}>{tempoDescanso}</Text>
+            <TouchableOpacity
+              style={styles.botaoConfiguracao}
+              onPress={() => mudarTempo(-1, 'descanso')}
+              disabled={!emTrabalho && timerAtivo || tempoDescanso <= 1}
+            >
+              <Text style={styles.configuracaoBotaoTexto}>-</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
@@ -176,6 +185,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     paddingHorizontal: 10,
   },
+  configuracaoBotoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  configuracaoValor: {
+    fontSize: 20,
+    marginHorizontal: 10,
+  }
 });
 
 export default App;
