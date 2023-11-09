@@ -1,5 +1,7 @@
-Dev all
+# SpeakEasy
 
-rm93935 Caio Henrique de Assis Martins
-rm94785 Isadora Antunes Lourenço Pereira
-rm95504 Maria Eduarda Herrera dos Santos 
+## Contribuidores
+
+- [Caio Henrique Martins](https://github.com/Caiohrqm)
+- [Isadora Antunes](https://github.com/NhakiB)
+- [Maria Eduarda Herrera](https://github.com/herrera3)
