@@ -1,190 +1,180 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-import { CountdownCircleTimer } from 'react-native-countdown-circle-timer';
-import { MoveDown, MoveUp, Play, RotateCw, Square } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const App = () => {
-  const [tempoTrabalho, setTempoTrabalho] = useState(1 * 60); // Tempo de trabalho inicial: 25 minutos em segundos
-  const [tempoDescanso, setTempoDescanso] = useState(1 * 60); // Tempo de descanso inicial: 5 minutos em segundos
-  const [tempoRestante, setTempoRestante] = useState(tempoTrabalho);
-  const [emTrabalho, setEmTrabalho] = useState(true);
-  const [iniciar, setIniciar] = useState(false);
-  const [key, setKey] = useState(0);
 
-  const countdownRef = useRef(null);
+  const tempoInicialTrabalho = 5 * 60;
+  const tempoInicialDescanso = 1 * 60;
+
+  const [tempoTrabalho, setTempoTrabalho] = useState(tempoInicialTrabalho);
+  const [tempoDescanso, setTempoDescanso] = useState(tempoInicialDescanso);
+  const [tempoAtual, setTempoAtual] = useState(tempoTrabalho);
+  const [timerAtivo, setTimerAtivo] = useState(false);
+  const [emTrabalho, setEmTrabalho] = useState(true);
 
   useEffect(() => {
-    if (iniciar && tempoRestante > 0) {
-      countdownRef.current = setInterval(() => {
-        setTempoRestante(tempoRestante => tempoRestante - 1);
+    let intervalo;
+
+    if (timerAtivo) {
+      intervalo = setInterval(() => {
+        setTempoAtual((tempoAtual) => {
+          if (tempoAtual - 1 <= 0) {
+            clearInterval(intervalo);
+            setEmTrabalho(!emTrabalho);
+            return emTrabalho ? tempoDescanso : tempoTrabalho;
+          }
+          return tempoAtual - 1;
+        });
       }, 1000);
-    } else if (iniciar && tempoRestante === 0) {
-      if (emTrabalho) {
-        setEmTrabalho(false);
-        setTempoRestante(tempoDescanso);
+    }
+
+    return () => clearInterval(intervalo);
+  }, [timerAtivo, emTrabalho, tempoTrabalho, tempoDescanso]);
+
+  const mudarTempo = (minutos, tipo) => {
+    if (!timerAtivo) {
+      if (tipo === 'trabalho') {
+        const novoTempo = tempoTrabalho + minutos * 60;
+        setTempoTrabalho(novoTempo);
+        if (emTrabalho) setTempoAtual(novoTempo);
       } else {
-        setEmTrabalho(true);
-        setTempoRestante(tempoTrabalho);
+        const novoTempo = tempoDescanso + minutos * 60;
+        setTempoDescanso(novoTempo);
+        if (!emTrabalho) setTempoAtual(novoTempo);
       }
     }
-
-    return () => {
-      clearInterval(countdownRef.current);
-    };
-  }, [iniciar, tempoRestante, emTrabalho, tempoTrabalho, tempoDescanso]);
-
-  const handleIniciarParar = () => {
-    setIniciar(!iniciar);
-    setEmTrabalho(!emTrabalho);
   };
 
-  const handleReiniciar = () => {
-    setTempoRestante(emTrabalho ? tempoTrabalho : tempoDescanso);
-  };
-
-  const handleAlterarTempo = (tipo, operacao) => {
-    if (tipo === 'trabalho' && operacao === 1) {
-      setTempoTrabalho(tempoTrabalho + 60);
-      setTempoRestante(tempoRestante + 60);
-    } else if (tipo === 'trabalho' && operacao === -1 && tempoTrabalho > 60) {
-      setTempoTrabalho(tempoTrabalho - 60);
-      setTempoRestante(tempoRestante - 60);
-    } else if (tipo === 'descanso' && operacao === 1) {
-      setTempoDescanso(tempoDescanso + 60);
-      setTempoRestante(tempoRestante + 60);
-    } else if (tipo === 'descanso' && operacao === -1 && tempoDescanso > 60) {
-      setTempoDescanso(tempoDescanso - 60);
-      setTempoRestante(tempoRestante - 60);
-    }
+  const formatarTempo = (tempo) => {
+    const minutos = Math.floor(tempo / 60);
+    const segundos = tempo % 60;
+    return `${minutos}:${segundos < 10 ? '0' : ''}${segundos}`;
   };
 
   return (
-    <>
-      <View style={styles.tela}>
-        <Text style={styles.titulo}>
-          Hora de {emTrabalho ? 'Trabalho' : 'Descanso'}
-        </Text>
-        
-        <View style={styles.secaoBotoes}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: emTrabalho ? '#f84434' : '#00b383' },
+      ]}
+    >
+      <Text style={styles.titulo}>
+        {emTrabalho ? 'Hora de trabalhar' : 'Hora de descansar'}
+      </Text>
+
+      <Text style={styles.timer}>{formatarTempo(tempoAtual)}</Text>
+
+      <View style={styles.botoes}>
+        <TouchableOpacity
+          style={styles.botao}
+          onPress={() => setTimerAtivo(!timerAtivo)}
+        >
+          <Text style={styles.botaoTexto}>{timerAtivo ? 'Parar' : 'Iniciar'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.botao}
+          onPress={() => {
+            setTimerAtivo(false);
+            setTempoAtual(emTrabalho ? tempoTrabalho : tempoDescanso);
+          }}
+        >
+          <Text style={styles.botaoTexto}>Reiniciar</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.configuracao}>
+        <View style={styles.configuracaoBloco}>
+          <Text style={styles.configuracaoTitulo}>Trabalho</Text>
           <TouchableOpacity
-            style={styles.botaoCronometro}
-            onPress={handleIniciarParar}
+            style={styles.botaoConfiguracao}
+            onPress={() => mudarTempo(1, 'trabalho')}
+            disabled={emTrabalho && timerAtivo}
           >
-            {!iniciar ? <Play /> : <Square />}
-            {!iniciar ? (
-              <Text style={styles.textoBotao}>Iniciar</Text>
-            ) : (
-              <Text style={styles.textoBotao}>Parar</Text>
-            )}
+            <Text style={styles.configuracaoBotaoTexto}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.botaoCronometro}
-            onPress={handleReiniciar}
+            style={styles.botaoConfiguracao}
+            onPress={() => mudarTempo(-1, 'trabalho')}
+            disabled={emTrabalho && timerAtivo || tempoTrabalho <= 60}
           >
-            <RotateCw />
-            <Text style={styles.textoBotao}>Reiniciar</Text>
+            <Text style={styles.configuracaoBotaoTexto}>-</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.configuracaoBloco}>
+          <Text style={styles.configuracaoTitulo}>Descanso</Text>
+          <TouchableOpacity
+            style={styles.botaoConfiguracao}
+            onPress={() => mudarTempo(1, 'descanso')}
+            disabled={!emTrabalho && timerAtivo}
+          >
+            <Text style={styles.configuracaoBotaoTexto}>+</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.botaoConfiguracao}
+            onPress={() => mudarTempo(-1, 'descanso')}
+            disabled={!emTrabalho && timerAtivo || tempoDescanso <= 60}
+          >
+            <Text style={styles.configuracaoBotaoTexto}>-</Text>
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.cronometo}>
-        <View style={styles.telaTimer}>
-          <Text style={styles.tituloSetter}>Trabalho</Text>
-          <TouchableOpacity
-            style={[styles.botaoTimer, styles.getButtonStyle(emTrabalho)]}
-            onPress={() => handleAlterarTempo('trabalho', 1)}
-          >
-            <MoveUp color={'white'} />
-          </TouchableOpacity>
-          <Text style={styles.textoMinutos}>{tempoTrabalho / 60} min</Text>
-          <TouchableOpacity
-            style={[styles.botaoTimer, styles.getButtonStyle(emTrabalho)]}
-            onPress={() => handleAlterarTempo('trabalho', -1)}
-          >
-            <MoveDown color={'white'} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.telaTimer}>
-          <Text style={styles.tituloSetter}>Descanso</Text>
-          <TouchableOpacity
-            style={[styles.botaoTimer, styles.getButtonStyle(!emTrabalho)]}
-            onPress={() => handleAlterarTempo('descanso', 1)}
-          >
-            <MoveUp color={'white'} />
-          </TouchableOpacity>
-          <Text style={styles.textoMinutos}>{tempoDescanso / 60} min</Text>
-          <TouchableOpacity
-            style={[styles.botaoTimer, styles.getButtonStyle(!emTrabalho)]}
-            onPress={() => handleAlterarTempo('descanso', -1)}
-          >
-            <MoveDown color={'white'} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tela: {
+  container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f84434',
+    padding: 20,
   },
   titulo: {
     fontSize: 24,
-    marginBottom: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  
-  secaoBotoes: {
-    flexDirection: 'row',
-    marginTop: 20,
+  timer: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginVertical: 20,
   },
-  botaoCronometro: {
+  botoes: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#474f4f',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginBottom: 30,
+  },
+  botao: {
+    backgroundColor: '#fff',
+    padding: 10,
+    marginHorizontal: 5,
     borderRadius: 5,
-    marginHorizontal: 10,
   },
-  textoBotao: {
-    color: 'white',
-    marginLeft: 10,
+  botaoTexto: {
+    fontSize: 20,
   },
-  cronometo: {
+  configuracao: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 20,
+    justifyContent: 'space-between',
+    width: '100%',
   },
-  telaTimer: {
+  configuracaoBloco: {
     alignItems: 'center',
   },
-  tituloSetter: {
+  configuracaoTitulo: {
     fontSize: 18,
     marginBottom: 10,
   },
-  botaoTimer: {
-    backgroundColor: '#f84434',
-    padding: 10,
+  botaoConfiguracao: {
+    backgroundColor: '#fff',
+    padding: 5,
     borderRadius: 5,
-    marginVertical: 10,
+    marginVertical: 5,
   },
-  textoMinutos: {
-    fontSize: 16,
-    marginVertical: 10,
-    fontWeight: 'bold',
-  },
-  getButtonStyle: isActive => {
-    return {
-      backgroundColor: isActive ? '#f84434' : '#474f4f',
-    };
+  configuracaoBotaoTexto: {
+    fontSize: 20,
+    paddingHorizontal: 10,
   },
 });
 
